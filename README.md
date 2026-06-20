@@ -73,3 +73,12 @@ browser.
 
 `@mozilla/readability` is vendored under `Sources/WebKitReaderMode/Resources/Readability`
 with its Apache-2.0 license.
+
+## Developer Docs
+
+See [docs/IntegrationGuide.md](docs/IntegrationGuide.md) for a complete
+integration guide covering setup, navigation flow, reader toggling, caching,
+styling, platform integration, and common pitfalls.
+
+The repository also includes a runnable macOS example browser in
+[Examples/ReaderModeBrowser](Examples/ReaderModeBrowser).
