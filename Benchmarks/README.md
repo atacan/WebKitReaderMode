@@ -54,6 +54,79 @@ above). Remaining ideas if more wins are needed:
   the buffer geometrically instead of sizing it exactly (trades a second scan
   for potential over-allocation).
 
+## Lessons learned: getting relative results quickly
+
+Things that cost us time during the first optimization pass, so the next
+person doesn't repeat them:
+
+* **`baseline check` exit code is not pass/fail for development.** It flags
+  *any* deviation beyond the threshold — including improvements — so a big win
+  exits non-zero. Read the printed tables instead of trusting `$?`.
+* **`--filter` is a whole-match regexp and silently matches nothing** on a bad
+  pattern (exit 0, no output). Always wrap: `--filter '.*name.*'`, escape
+  parens, and remember `.` matches everything.
+* **Don't slice the pretty comparison tables by line ranges.** Sections in
+  `baseline compare` output sit back-to-back; naive "take 125 lines after the
+  header" parsing bleeds rows from the *next* benchmark into the current one.
+  We mis-attributed results this way. Either run one filter at a time and read
+  the absolute table, or parse JSON (below).
+* **For clean before/after pairs: stash-measure-restore-measure.** Save a
+  named baseline once, but for reporting numbers prefer measuring both sides
+  in the same session (`git stash push Sources Tests` → run filtered
+  benchmarks → `git stash pop` → run again), one filter per invocation.
+  Machine noise between full-suite runs can be enormous; isolated runs taken
+  minutes apart were consistent, full-suite runs differed by up to ~1000× on
+  sub-µs benchmarks.
+* **Rerun anything suspicious before believing it.** One full-suite run
+  reported a renderer at +29000 % that was pure background-load noise; an
+  isolated rerun showed −65 %.
+* **Machine-readable output**: `--format jsonSmallerIsBetter --path out.json`
+  writes `out.json/Current_run.json` — a flat list of `{name, value, unit}`
+  entries (one per metric × benchmark). That's the easiest thing to diff in a
+  10-line script; far easier than decoding the HDR histograms stored inside
+  baseline `results.json` files (those store histograms, not p50s).
+* **Absolute values are noisy for fast ops; ratios are not.** Per-op wall
+  times below ~10 µs swing with harness overhead and machine load, but the
+  *relative* delta measured back-to-back was stable every time. Report deltas,
+  and always pair malloc counts/bytes with wall clock so a speed-for-memory
+  trade can't hide.
+
+### Recipe: quick relative check while optimizing
+
+```sh
+# once, at branch point:
+swift package --allow-writing-to-package-directory benchmark baseline update pre-optimization
+
+# after each change (fast — only builds + runs what's filtered):
+swift package benchmark --filter '.*htmlEscaped.*'          # absolute numbers now
+swift package --allow-writing-to-package-directory \
+  benchmark baseline check pre-optimization --filter '.*htmlEscaped.*'
+# ^ read the printed deviation table (improvements show as negative Δ);
+#   ignore missing rows — metrics within 5% are simply not listed.
+```
+
+If you want scripted before/after pairs without baselines:
+
+```sh
+# /tmp/pair.sh <output-suffix> — runs filtered suites, greps the three
+# metrics we care about into /tmp/meas_<suffix>.txt
+cat > /tmp/pair.sh <<'SCRIPT'
+#!/bin/bash
+out=/tmp/meas_$1.txt; : > $out
+while read -r f; do
+  swift package benchmark --filter "$f" >/dev/null 2>&1
+  echo "##### $f" >> $out
+  swift package benchmark --filter "$f" 2>/dev/null \
+    | LC_ALL=C sed 's/\x1b\[[0-9;]*[A-Za-z]//g' \
+    | LC_ALL=C grep -E 'Time \(wall clock|Malloc \(total\)|Malloc \(bytes total' >> $out
+done <<'FILTERS'
+.*htmlEscaped.*
+FILTERS
+SCRIPT
+# usage: git stash push Sources Tests && bash /tmp/pair.sh pre \
+#        && git stash pop && bash /tmp/pair.sh post
+```
+
 ## Article fixtures
 
 `Fixtures/` contains three HTML payloads used by the escaping and renderer
