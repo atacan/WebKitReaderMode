@@ -9,7 +9,7 @@ From this directory:
 
 ```sh
 swift package benchmark                          # everything, pretty tables
-swift package benchmark --filter htmlEscaped     # subset
+swift package benchmark --filter '.*htmlEscaped.*'  # subset (whole-match regexp!)
 swift package benchmark --format jsonSmallerIsBetter --path results.json
 swift package --allow-writing-to-package-directory benchmark baseline update <name>
 swift package --allow-writing-to-package-directory benchmark baseline check <name>
@@ -19,8 +19,11 @@ Useful metrics flags: `--metrics wallClock,mallocCountTotal,instructions` or
 `--all-metrics`. Allocation metrics are on by default — that's the point of
 this package.
 
-Note: filters are matched literally; parentheses in benchmark names must be
-quoted and balanced on the command line (e.g. `--filter "htmlEscaped (many escapable chars)"`).
+Note: `--filter`/`--skip` are **whole-match regular expressions** against the
+fully qualified benchmark name (`Target:benchmark name`). A bare substring like
+`htmlEscaped` matches nothing and the run exits silently with code 0 — wrap it:
+`--filter '.*htmlEscaped.*'`. Parentheses in names must be escaped, e.g.
+`--filter '.*htmlEscaped \(nothing to escape\)'`.
 
 ## What is covered
 
