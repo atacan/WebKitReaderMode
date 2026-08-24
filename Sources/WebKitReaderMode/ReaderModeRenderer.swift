@@ -74,12 +74,14 @@ public struct ReaderModeRenderer: Sendable {
     // Hand-rolled encoding of the three fields (previously
     // JSONSerialization + replacingOccurrences(of:"</")). The dictionary-based
     // original did not guarantee a key order; the JSON itself is equivalent.
+    // Note: `style` is embedded as a JSON-encoded *string* (the old behavior —
+    // style.jsonString was a dictionary value), not as a nested object.
     var json = "{\"url\":"
     json.jsonAppendEscapedValue(article.url.absoluteString)
     json += ",\"title\":"
     json.jsonAppendEscapedValue(article.title)
     json += ",\"style\":"
-    json += style.jsonString
+    json.jsonAppendEscapedValue(style.jsonString)
     json += "}"
     return json
   }

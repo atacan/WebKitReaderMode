@@ -117,13 +117,10 @@ import WebKitReaderMode
   let object = try! JSONSerialization.jsonObject(with: Data(metadata.utf8)) as! [String: Any]
   #expect(object["url"] as? String == "https://example.com/a")
   #expect(object["title"] as? String == "A \"quoted\" </script> title — ünï")
-  let metadataStyle = try #require(object["style"] as? [String: Any])
-  let expectedStyle = try #require(
-    JSONSerialization.jsonObject(with: Data(ReaderStyle().jsonString.utf8)) as? [String: Any])
-  // Compare as canonically-serialized JSON ([String: Any] isn't Comparable).
-  #expect(
-    try JSONSerialization.data(withJSONObject: metadataStyle, options: [.sortedKeys])
-      == JSONSerialization.data(withJSONObject: expectedStyle, options: [.sortedKeys]))
+  // `style` is embedded as a JSON-encoded string (the long-standing contract),
+  // not as a nested object.
+  let metadataStyle = try #require(object["style"] as? String)
+  #expect(metadataStyle == ReaderStyle().jsonString)
   // …and must never contain an unescaped "</script>" inside its values.
   #expect(!metadata.contains("</"))
 }
@@ -163,7 +160,7 @@ import WebKitReaderMode
             <p>Hi & <b>bye</b></p>
         </article>
       </main>
-      <script id="reader-metadata" type="application/json">{"url":"https://example.com/a&b","title":"T & T","style":\(style.jsonString)}</script>
+      <script id="reader-metadata" type="application/json">{"url":"https://example.com/a&b","title":"T & T","style":"{\\\"fontFamily\\\":\\\"systemSans\\\",\\\"theme\\\":\\\"light\\\",\\\"fontScale\\\":5}"}</script>
       <script src="\(baseURL.appendingPathComponent("ReaderRuntime.js").absoluteString)"></script>
     </body>
     </html>
