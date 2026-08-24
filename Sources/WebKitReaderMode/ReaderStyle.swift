@@ -37,9 +37,10 @@ public struct ReaderStyle: Codable, Equatable, Sendable {
 
   @_spi(Benchmarking)
   public var jsonString: String {
-    guard let data = try? JSONEncoder().encode(self) else {
-      return "{}"
-    }
-    return String(decoding: data, as: UTF8.self)
+    // Hand-rolled encoding of the three fields. This must stay byte-identical
+    // to `JSONEncoder().encode(self)` (verified by tests): JSONEncoder emits
+    // keys in the order fontFamily, theme, fontScale, enum raw values need no
+    // escaping, and fontScale is a clamped integer in 1...13.
+    "{\"fontFamily\":\"\(fontFamily.rawValue)\",\"theme\":\"\(theme.rawValue)\",\"fontScale\":\(fontScale)}"
   }
 }

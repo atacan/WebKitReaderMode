@@ -35,13 +35,24 @@ public API. The benchmarks import with
 
 | Benchmark | Why |
 |---|---|
-| `htmlEscaped` (escape-heavy / escape-free + per fixture tier) | Called many times per rendered article; currently builds output char-by-char with `+=`. Prime candidate for a single-pass UTF-8 rewrite. |
-| `ReaderModeRenderer.html(for:)` per size tier | Full document construction against realistic payloads: string interpolation + escaping + metadata JSON encoding. |
-| `ReaderStyle.jsonString` / `JSONEncoder().encode(ReaderStyle)` | `jsonString` allocates a new `JSONEncoder` per call; comparing the two shows the overhead. |
-| `SHA256.hexDigest` (short URL / long input) | Underpins the disk cache's sharded path derivation — paid once per cache lookup. |
-| `ReaderModeScriptBuilder.userScriptSource` | Reads three JS resources from disk and joins them on every install. |
+| `htmlEscaped` (escape-heavy / escape-free + per fixture tier) | Called many times per rendered article. **Optimized**: single pass over UTF-8 into one exactly-sized `String(unsafeUninitializedCapacity:)` buffer with an allocation-free fast path for input containing nothing to escape (byte-identical output; verified by tests). |
+| `ReaderModeRenderer.html(for:)` per size tier | Full document construction against realistic payloads. **Optimized**: document is assembled by appending into one preallocated string, and the metadata script is hand-encoded (with `</` → `<\/` during the escape pass) instead of round-tripping through `JSONSerialization`. |
+| `ReaderStyle.jsonString` / `JSONEncoder().encode(ReaderStyle)` | **Optimized**: `jsonString` is hand-rolled (semantically identical to the old encoder output — key order was never guaranteed; verified against `JSONEncoder` in tests). The `JSONEncoder` benchmark remains as a control showing what the hand-rolled path avoids. |
+| `SHA256.hexDigest` (short URL / long input) | Underpins the disk cache's sharded path derivation. **Optimized**: hex encoding via a fixed 64-byte buffer and lookup table instead of 32 `String(format:)` allocations. |
+| `ReaderModeScriptBuilder.userScriptSource` | **Optimized**: the joined bundle resources are cached in a static lazy constant (bundle contents are immutable). |
 | `MemoryReaderModeCache.put` / hit lookup | Actor hop + dictionary costs; guards against added locking/copying. |
 | `DiskReaderModeCache.put` / hit / contains | JSON encode/decode plus file I/O through the sharded hash directory layout. |
+
+## Optimization status
+
+All of the originally identified candidates have been addressed (see table
+above). Remaining ideas if more wins are needed:
+
+* `DiskReaderModeCache` JSON encode/decode still goes through
+  `JSONEncoder`/`JSONDecoder`; hand-rolling could cut allocations further.
+* `htmlEscaped`'s escape-heavy path could skip the counting pass by growing
+  the buffer geometrically instead of sizing it exactly (trades a second scan
+  for potential over-allocation).
 
 ## Article fixtures
 
