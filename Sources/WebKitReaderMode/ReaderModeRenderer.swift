@@ -96,24 +96,33 @@ extension String {
     var out = [UInt8]()
     out.reserveCapacity(value.utf8.count + 16)
     let utf8View = value.utf8
+    // Hoisted so the rare \u00XX path doesn't allocate per occurrence.
+    let hexDigits = Array("0123456789abcdef".utf8)
     var index = utf8View.startIndex
     while index < utf8View.endIndex {
       let byte = utf8View[index]
       switch byte {
       case 0x22: // "
-        out.append(contentsOf: Array("\\\"".utf8))
+        out.append(0x5C)
+        out.append(0x22)
       case 0x5C: // backslash
-        out.append(contentsOf: Array("\\\\".utf8))
+        out.append(0x5C)
+        out.append(0x5C)
       case 0x08:
-        out.append(contentsOf: Array("\\b".utf8))
+        out.append(0x5C)
+        out.append(0x62) // b
       case 0x0C:
-        out.append(contentsOf: Array("\\f".utf8))
+        out.append(0x5C)
+        out.append(0x66) // f
       case 0x0A:
-        out.append(contentsOf: Array("\\n".utf8))
+        out.append(0x5C)
+        out.append(0x6E) // n
       case 0x0D:
-        out.append(contentsOf: Array("\\r".utf8))
+        out.append(0x5C)
+        out.append(0x72) // r
       case 0x09:
-        out.append(contentsOf: Array("\\t".utf8))
+        out.append(0x5C)
+        out.append(0x74) // t
       case 0x3C: // "<": escape a following "/" so "</script>" cannot appear
         out.append(0x3C)
         let next = utf8View.index(after: index)
@@ -124,7 +133,13 @@ extension String {
         }
       default:
         if byte < 0x20 {
-          out.append(contentsOf: Array(String(format: "\\u%04x", byte).utf8))
+          // \u00XX — two hex digits are always ASCII-safe.
+          out.append(0x5C)
+          out.append(0x75) // u
+          out.append(0x30) // 0
+          out.append(0x30) // 0
+          out.append(hexDigits[Int(byte >> 4)])
+          out.append(hexDigits[Int(byte & 0x0F)])
         } else {
           // Passes multi-byte UTF-8 sequences through byte-for-byte.
           out.append(byte)
