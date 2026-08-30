@@ -1,7 +1,9 @@
 import Foundation
 
-enum ReaderModeScriptBuilder {
-  static func userScriptSource() throws -> String {
+@_spi(Benchmarking)
+public enum ReaderModeScriptBuilder {
+  @_spi(Benchmarking)
+  public static func userScriptSource() throws -> String {
     let readability = try resourceString(
       named: "Readability",
       extension: "js",

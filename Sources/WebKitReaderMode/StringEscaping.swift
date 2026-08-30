@@ -1,7 +1,8 @@
 import Foundation
 
 extension String {
-  var htmlEscaped: String {
+  @_spi(Benchmarking)
+  public var htmlEscaped: String {
     var result = ""
     result.reserveCapacity(count)
 

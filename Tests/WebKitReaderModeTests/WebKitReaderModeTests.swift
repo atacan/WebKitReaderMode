@@ -1,6 +1,8 @@
 import Foundation
 import Testing
 @testable import WebKitReaderMode
+@_spi(Benchmarking)
+import WebKitReaderMode
 
 @Test func memoryCacheStoresArticles() async throws {
   let cache = MemoryReaderModeCache()

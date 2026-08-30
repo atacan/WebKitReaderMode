@@ -35,7 +35,8 @@ public struct ReaderStyle: Codable, Equatable, Sendable {
     ]
   }
 
-  var jsonString: String {
+  @_spi(Benchmarking)
+  public var jsonString: String {
     guard let data = try? JSONEncoder().encode(self) else {
       return "{}"
     }

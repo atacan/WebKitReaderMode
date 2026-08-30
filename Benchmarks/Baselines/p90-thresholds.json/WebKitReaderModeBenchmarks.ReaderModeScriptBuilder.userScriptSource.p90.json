@@ -1,0 +1,12 @@
+{
+  "cpuTotal" : 130303,
+  "freeCountTotal" : 78,
+  "instructions" : 1462271,
+  "mallocBytesCount" : 289250,
+  "mallocCountTotal" : 78,
+  "mallocFreeDelta" : 0,
+  "memoryLeakedBytes" : 0,
+  "peakMemoryResident" : 16629760,
+  "throughput" : 9375,
+  "wallClock" : 128191
+}
