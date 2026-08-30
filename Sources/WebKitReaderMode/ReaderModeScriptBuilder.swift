@@ -2,8 +2,17 @@ import Foundation
 
 @_spi(Benchmarking)
 public enum ReaderModeScriptBuilder {
+  // The bundled JS resources are immutable, so the joined script is computed
+  // once and reused for every user-script install.
+  private static let cachedUserScriptSource: Result<String, Error> =
+    Result { try buildUserScriptSource() }
+
   @_spi(Benchmarking)
   public static func userScriptSource() throws -> String {
+    try cachedUserScriptSource.get()
+  }
+
+  private static func buildUserScriptSource() throws -> String {
     let readability = try resourceString(
       named: "Readability",
       extension: "js",
